@@ -1,0 +1,540 @@
+---
+theme: none
+embed-resources: true
+format:
+  html:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = FALSE,
+    warning = FALSE,
+    message = FALSE,
+    comment = NA
+)
+
+library(tidyverse)
+library(plotly)
+library(gt)
+```
+
+<style>
+    body {
+        margin: 0;
+    }
+
+    #TOC {
+      padding-top: 2rem;
+    }
+</style>
+
+
+# Why boxplot?
+
+Boxplot is a type of chart commonly used to display the distribution of the data. They give a basic indication on the dispersion and skewness. With boxplots it is also easy to display distributions of multiple groups on the same graph, allowing for an easy overview of the differences or similarities. 
+
+They are usually constructed by calculating five statistics:
+
+- Lower fence: q1 - 1.5 *  (q3 - q1), where q3 - q1 is the length of the box;
+- First Quartile (q1)  (25 % of all the values are below this value and 75 % of all the values are above);
+- Median - second quartile (50 % of all the values are below this value and 50 % of all the values are above);
+- Third Quartile (q1)  (75 % of all the values are below this value and 25 % of all the values are above);
+- Upper fence: q3 + 1.5 *  (q3 - q1).
+
+
+**The central 50 % values are inside the box and the other 50 % are outside the box!** Which means that if we rank 100 people by their height, from smallest (1) to largest (100), the ones ranking from 26 to 75 would fall inside the box, the smallest 25 would be below the box and the highest 25 above.
+
+<br>
+
+To have a better view of the boxplots and the underlying distribution of points it is suggested to zoom-in the particular boxplot by double-clicking the correct Type in the legend. By hovering over the points the respective value is shown. Calculated statistics (and the minimum and maximum value) are shown by hovering over the boxplot.
+
+
+# Examples
+
+Examples of various boxplots.
+
+## Comparing differences between distributions
+
+Example:
+
+Suppose we want to compare the distributions of height between males and females. We collect heights from 20 males and 20 females. The data is:
+
+```{r}
+set.seed(123)
+male_h <- round(sort(rnorm(20, 172, 8)), 1)
+female_h <- round(sort(rnorm(20, 162, 6)), 1)
+sex <- rep(c("Male", "Female"), each = 20)
+
+as.data.frame.matrix(rbind(c("Male", male_h), c("Female", female_h))) %>% 
+  gt(rowname_col = "V1") %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Heights of males and females") 
+```
+
+<br> 
+
+And the comparison of the distributions is:
+
+```{r}
+boxplot(c(male_h, female_h) ~ sex, ylab = "Height")
+```
+
+From the boxplots we see that:
+
+- 50 % of females are higher than 162cm and 50 % of males are higher than 173cm;
+- 25 % of males are higher than 176 cm and 25 % of females are higher than 166cm;
+- while there are some males that are lower than females, most of the males are higher than females;
+- 75 % of males are higher than the lower 75 % of females;
+- ...
+
+
+## Boxplot of a symmetric distribution
+
+
+```{r}
+set.seed(123)
+n <- 50
+med <- 50
+x1 <- round(rnorm(1000, med, 4)) - med
+x1 <- x1[x1 >= 0][1:n]
+x1 <- sort(c(med - x1, med + x1))
+
+x2 <- round(rnorm(1000, med, 7)) - med
+x2 <- x2[x2 >= 0][1:n]
+x2 <- sort(c(med - x2, med + x2))
+
+
+x3 <- round(runif(n, 0, 20))
+x3 <- sort(c(med - x3, med + x3))
+
+x4 <- round(rnorm(1000, med, 10)) - med
+x4 <- x4[x4 >= 0][1:n]
+x4 <- sort(c(med - x4, med + x4))
+
+
+Data_Sym <- data.frame(x1 = x1, x2 = x2, x3 = x3, x4 = x4) %>% 
+  pivot_longer(cols = everything(), names_to = "Type") %>% 
+  mutate(Type = factor(Type,
+                       levels = c("x1", "x2", "x3", "x4"),
+                       labels = c("Type 1", "Type 2", "Type 3", "Type 4")))
+```
+
+The distributions shown in this chapter all have the same median value and are symmetric. This means that the median value coincides with the mean. The underlying data is presented with dots on the boxplot and in tables.
+
+- Type 1 shows the least variable distribution with most on the values concentrated around the median;
+- Type 2 is same as Type 1 but with higher variance;
+- Type 3 has values distributed uniformly around the median with range from 30 to 70. This means that the values are not any more concentrated around the median than elsewhere;
+- Type 4 is the same as Type 1 and 2 with even higher variance.
+
+
+```{r}
+Data_Sym %>% 
+  plot_ly(
+    type = "box",
+    boxpoints = "all",
+    jitter = 1,
+    pointpos = 0,
+    alpha = .5,
+    marker = list(color = 'rgba(60, 60, 60, 0.5)',
+                  size = 5),
+    y = ~ value,
+    color = ~ Type
+  ) %>% 
+  layout(
+    #showlegend = FALSE,
+    #title = "Boxplot of a symmetric distribution",
+    legend = list(y = 1.1, orientation = "h"),
+    xaxis = list(title = ""),
+    yaxis = list(title = "Value"),
+    boxmode = "group",
+    boxgroupgap = 0
+  )
+```
+
+### Data and density plot
+
+::: {.panel-tabset}
+#### Combined
+
+```{r}
+n <- 1e6
+x11 <- rnorm(n, 50, 4)
+x22<- rnorm(n, 50, 7)
+x33 <- runif(n, 30, 70)
+x44 <- rnorm(n, 50, 10)
+
+data.frame(x = c(x11, x22, x33, x44), Type = rep(c("Type 1", "Type 2", "Type 3", "Type 4"), each = n)) %>% 
+  ggplot(aes(x = x)) +
+  geom_density(aes(fill = Type), alpha = 0.5) +
+  theme_bw()
+```
+
+
+#### Type 1
+
+```{r}
+data.frame(x = x11) %>% 
+  ggplot(aes(x = x)) +
+  geom_density()
+```
+
+
+```{r}
+tab <- as.data.frame.matrix(matrix(x1, nrow = 4, byrow = T))
+tab %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Data for Type 1")
+```
+
+#### Type 2
+
+```{r}
+data.frame(x = x22) %>% 
+  ggplot(aes(x = x)) +
+  geom_density()
+```
+
+
+```{r}
+tab <- as.data.frame.matrix(matrix(x2, nrow = 4, byrow = T))
+tab %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Data for Type 2")
+```
+
+#### Type 3
+
+```{r}
+data.frame(x = c(30, 70)) %>% 
+ggplot(aes(x = x)) +
+  stat_function(fun = dunif, n = 1000, args = list(min = 30, max = 70)) + 
+  ylim(0, 0.05)
+```
+
+```{r}
+tab <- as.data.frame.matrix(matrix(x3, nrow = 4, byrow = T))
+tab %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Data for Type 3")
+```
+
+#### Type 4
+
+```{r}
+data.frame(x =x44) %>% 
+  ggplot(aes(x = x)) +
+  geom_density()
+```
+
+
+```{r}
+tab <- as.data.frame.matrix(matrix(x4, nrow = 4, byrow = T))
+tab %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Data for Type 4")
+```
+
+
+:::
+
+<hr>
+
+
+## Boxplot of an asymmetric distribution
+
+This section showcases boxplots of asymmetric (specifically right skewed) distributions.
+
+
+```{r include = FALSE}
+Beta_Skew <- function(a, b){
+  (2 * (b - a) * sqrt(a + b -1))/((a + b + 2) * sqrt(a * b))
+}
+
+set.seed(123)
+n <- 100
+med <- 50
+shape <- 100
+rate <- 2
+x1 <- rbeta(n, 1.01, 5)
+x1 <- sort(round(50 * x1))
+x1 <- x1 + med - median(x1)
+boxplot(x1)
+
+x2 <- rbeta(n, 1.01, 10)
+x2 <- sort(round(75 * x2))
+x2 <- x2 + med - median(x2)
+boxplot(x2)
+
+x3 <- rbeta(n, 2.5, 10)
+x3 <- sort(round(50 * x3))
+x3 <- x3 + med - median(x3)
+boxplot(x3)
+
+x4 <- rbeta(n, 1, 10)
+x4 <- sort(round(50 * x4))
+x4 <- x4 + med - median(x4)
+boxplot(x4)
+
+
+Data_Asym <- data.frame(x1 = x1, x2 = x2, x3 = x3, x4 = x4) %>% 
+  pivot_longer(cols = everything(), names_to = "Type") %>% 
+  mutate(Type = factor(Type,
+                       levels = c("x1", "x2", "x3", "x4"),
+                       labels = c("Type 1", "Type 2", "Type 3", "Type 4")))
+```
+
+
+```{r}
+Data_Asym %>% 
+  plot_ly(
+    type = "box",
+    boxpoints = "all",
+    jitter = 1,
+    pointpos = 0,
+    alpha = .5,
+    marker = list(color = 'rgba(60, 60, 60, 0.5)',
+                  size = 5),
+    y = ~ value,
+    color = ~ Type
+  ) %>% 
+  layout(
+    #showlegend = FALSE,
+    #title = "Boxplot of a symmetric distribution",
+    legend = list(y = 1.1, orientation = "h"),
+    xaxis = list(title = ""),
+    yaxis = list(title = "Value"),
+    boxmode = "group",
+    boxgroupgap = 0
+  )
+```
+
+
+### Data and density plot 
+
+::: {.panel-tabset}
+#### Combined
+
+```{r}
+n <- 1e6
+x11 <- 50 * rbeta(n, 1.01, 5)
+x11 <- x11 + med - median(x11)
+
+x22 <- 75 * rbeta(n, 1.01, 10)
+x22 <- x22 + med - median(x22)
+
+x33 <- 50 * rbeta(n, 2.5, 10)
+x33 <- x33 + med - median(x33)
+
+x44 <- 50 * rbeta(n, 1, 10)
+x44 <- x44 + med - median(x44)
+
+data.frame(x = c(x11, x22, x33, x44), Type = rep(c("Type 1", "Type 2", "Type 3", "Type 4"), each = n)) %>% 
+  ggplot(aes(x = x)) +
+  geom_density(aes(fill = Type), alpha = 0.5) +
+  theme_bw()
+```
+
+
+#### Type 1
+
+```{r}
+data.frame(x = x11) %>% 
+  ggplot(aes(x = x)) +
+  geom_density()
+```
+
+
+```{r}
+tab <- as.data.frame.matrix(matrix(x1, nrow = 4, byrow = T))
+tab %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Data for Type 1")
+```
+
+#### Type 2
+
+```{r}
+data.frame(x = x22) %>% 
+  ggplot(aes(x = x)) +
+  geom_density()
+```
+
+
+```{r}
+tab <- as.data.frame.matrix(matrix(x2, nrow = 4, byrow = T))
+tab %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Data for Type 2")
+```
+
+#### Type 3
+
+```{r}
+data.frame(x = x22) %>% 
+ggplot(aes(x = x)) +
+  geom_density()
+```
+
+```{r}
+tab <- as.data.frame.matrix(matrix(x3, nrow = 4, byrow = T))
+tab %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Data for Type 3")
+```
+
+#### Type 4
+
+```{r}
+data.frame(x =x44) %>% 
+  ggplot(aes(x = x)) +
+  geom_density()
+```
+
+
+```{r}
+tab <- as.data.frame.matrix(matrix(x4, nrow = 4, byrow = T))
+tab %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Data for Type 4")
+```
+
+:::
+<br>
+
+<br>
+
+***
+
+
+
+# Cases when median might be the better choice
+
+Both the mean and median are measures of central tendencies of the data. That is to say we want an insight on the behavior of the average unit in the data. When data is symmetric (like when using normal distribution), the mean and median coincide.
+
+## Outliers
+
+The mean can be especially susceptible to outliers / extreme values in the data. These can be inherent in the underlying process or can be a consequence of bad data quality. 
+
+
+Example 1:
+
+Company A has 10 employees in total, 9 workers and a boss. While the workers have a salary ranging from 700 to 900 EUR, the boss is getting paid 5000 EUR. What would be an appropriate measure of the average salary in company A?
+
+```{r}
+salaries <- c(700, 700, 725, 750, 750, 780, 820, 900, 5000)
+```
+
+```{r}
+as.data.frame.matrix(matrix(salaries, nrow = 1, byrow = T)) %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Salaries of 10 employees (in EUR)")
+```
+
+
+
+- The mean salary is `r round(mean(salaries))` EUR (red vertical line on the graph below) but there is not a single worker in the company getting anywhere near `r round(mean(salaries))` EUR.
+- The median salary is `r median(salaries)` EUR (green vertical line on the graph below), close to the salary salary of most (9 out of 10) employees.
+
+```{r}
+data.frame(x = salaries, y = 1) %>% 
+  ggplot(aes(x = x, y = 1)) +
+  geom_point(size = 2, alpha = 0.25) +
+  geom_vline(xintercept = median(salaries), col = "green", lwd = 1) +
+  geom_vline(xintercept = mean(salaries), col = "red", lwd = 1) +
+  ylim(0.99, 1.01) +
+  theme_minimal() +
+  labs(
+    x = "Salary",
+    title = "Salaries of employees in Company A with the respective mean and median values"
+  ) + 
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank())
+```
+
+
+Example 2:
+Suppose we are interested in how much do employees of Company B pay for parking. We do so by asking the employees for the average amount paid for parking in a month. On the day of the survey only 15 out of 25 workers are present - we have missing data for 10 employees. When data is stored in the database, the missing values are mistakenly treated as zeros.
+
+```{r include = F}
+set.seed(123)
+freq <- c(rep(NA, 10),  round(rnorm(15, 40, 10), 2))
+error_freq <- sample(replace(freq, 1:10, 0))
+
+mean(freq, na.rm = T)
+mean(error_freq)
+median(error_freq)
+```
+
+Suppose the average monthly cost of parking is 40 EUR. These is the collected data in the database:
+
+```{r}
+as.data.frame.matrix(matrix(error_freq, nrow = 1, byrow = T)) %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header(title = "Average monthly cost of parking")
+```
+
+By looking at the data we may think that 10 out of 15 employees go to work by bike or use some other means of transportation and we would erroneously conclude that the average monthly cost is 25 EUR. By calculating the median, we would get a value of 34 EUR. While neither of the calculated values are accurate, the errors in the data seem to have a lesser impact on the median. Bare in mind that had there been more than half of the employees missing, the median value would be 0. That could however bring our attention to the unexpected result and suggest the need to investigate the quality of the data.
+
+## Skewed distributions
+
+The mean of a skewed distribution is dragged in the direction of the skew, where the data has lower density, generally making the median the better choice. The difference between the median and the mean increases with increasing skewness.
+
+The boxplots below show the median (bold solid line inside the box) and the mean (dotted line inside the box) for three distributions with increasing skewness.
+
+```{r}
+set.seed(123)
+x1 <- rbeta(10000, 2, 10)
+x1 <- x1 + 1 - median(x1)
+x2 <- rbeta(10000, 1, 10)
+x2 <- x2 + 1 - median(x2)
+x3 <- rbeta(10000, .5, 10)
+x3 <- x3 + 1 - median(x3)
+
+
+Data_Asym <- data.frame(x1 = x1, x2 = x2, x3 = x3) %>% 
+  pivot_longer(cols = everything(), names_to = "Type") %>% 
+  mutate(Type = factor(Type,
+                       levels = c("x1", "x2", "x3"),
+                       labels = c("Type 1", "Type 2", "Type 3")))
+
+Data_Asym %>% 
+  plot_ly(
+    type = "box",
+    alpha = .5,
+    marker = list(color = 'rgba(60, 60, 60, 0.5)',
+                  size = 5),
+    y = ~ value,
+    color = ~ Type,
+    boxmean = T
+  ) %>% 
+  layout(
+    #showlegend = FALSE,
+    #title = "Boxplot of a symmetric distribution",
+    legend = list(y = 1.1, orientation = "h"),
+    xaxis = list(title = ""),
+    yaxis = list(title = "Value"),
+    boxmode = "group",
+    boxgroupgap = 0
+  )
+```
+
+
+## Ordinal data
+
+Previous examples considered continuous data. The median is also an appropriate measure of central tendency when the data is ordinal (i.e. there is an ordering between the values). 
+
+Example:
+Consider a survey with a question about the respondent's general satisfaction with his job. The possible responses are "Not satisfied at all", "Usually not satisfied", "Neutral", "Satisfied" and "Very satisfied". The count of the number of workers in each of the possible categories shows that out of 20 workers 3 are not at all satisfied with their job, 4 are usually not satisfied, 6 are neither satisfied nor dissatisfied, 5 are satisfied and 2 are very satisfied. By the very nature of ordered categorical data, the mean can not be calculated, while the median is the neutral or "neither satisfied nor dissatisfied" group. 
+
